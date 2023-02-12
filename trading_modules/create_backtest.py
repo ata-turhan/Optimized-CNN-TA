@@ -1,22 +1,22 @@
-import random
 import math
+import random
 import time
-import pandas as pd
+
 import numpy as np
-from matplotlib import pyplot as plt
-import seaborn as sns
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from sklearn.metrics import (
-    ConfusionMatrixDisplay,
-    classification_report,
-)
+import seaborn as sns
 import yfinance as yf
+from matplotlib import pyplot as plt
+from plotly.subplots import make_subplots
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report
+
 
 def second_2_minute_converter(seconds: int) -> str:
     minutes = seconds // 60
     return f"{int(minutes)} minutes and {round(seconds%60, 2)} seconds"
+
 
 def volatility(portfolio_returns: np.array) -> float:
     return np.std(portfolio_returns)

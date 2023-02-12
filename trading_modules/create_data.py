@@ -1,9 +1,10 @@
-import pandas as pd
 import numpy as np
-import talib
+import pandas as pd
 import sklearn
 import sklearn.linear_model
+import talib
 from sklearn.linear_model import LinearRegression
+
 
 def HMA(df: pd.DataFrame, timeperiod: int = 14) -> float:
     """
@@ -52,7 +53,6 @@ def pltcolor(lst: list) -> list:
         elif lst.iloc[i] == 2:
             cols.append("red")
     return cols
-
 
 
 def trendNormalizePrices(prices: pd.DataFrame) -> None:
@@ -124,5 +124,3 @@ def adjustPrices(ohlcv: pd.DataFrame) -> None:
     ohlcv["Low"] = ohlcv["Low"] * adjustedRatio
     ohlcv["Open"] = ohlcv["Open"] * adjustedRatio
     ohlcv["Close"] = ohlcv["Close"] * adjustedRatio
-
-

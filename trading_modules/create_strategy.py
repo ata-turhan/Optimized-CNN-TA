@@ -1,7 +1,9 @@
 import random
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 from ta.volatility import BollingerBands
+
 
 def create_random_predictions(
     df: pd.DataFrame, hold_ratio: int = 10, buy_ratio: int = 1, sell_ratio: int = 1
@@ -13,6 +15,7 @@ def create_random_predictions(
     for i in range(test_values.shape[0]):
         predictions[i] = random.choices(label_list, weights=weight_list)[0]
     return predictions
+
 
 def create_rsi_predictions(
     df: pd.DataFrame, period: int = 14, buy_value: int = 30, sell_value: int = 70
