@@ -71,8 +71,9 @@ def create_bollinger_bands_predictions(
     indicator_bb = BollingerBands(
         close=close_values["Close"], window=window, window_dev=window_dev
     )
-    close_values["bb_bbh"] = indicator_bb.bollinger_hband()
-    close_values["bb_bbl"] = indicator_bb.bollinger_lband()
+    close_values = close_values.assign(bb_bbh=indicator_bb.bollinger_hband())
+    close_values = close_values.assign(bb_bbl=indicator_bb.bollinger_lband())
+    print(close_values)
     last_label = 0
     for i in range(close_values.shape[0]):
         if (
