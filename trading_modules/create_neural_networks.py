@@ -24,6 +24,8 @@ from tensorflow.keras.metrics import *
 from .configurations import set_random_seed
 from sklearn.metrics import ConfusionMatrixDisplay, classification_report, f1_score
 import optuna
+import plotly.express as px
+import plotly.graph_objects as go
 
 
 def create_model_MLP(activation_func="swish", dropout_rate=0.2, optimizer_algo="adam"):
@@ -189,7 +191,7 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
     OUTPUT_PATH = "./outputs"
     for i in range(len(datas)):
         es = EarlyStopping(
-            monitor="val_f1_score", mode="max", verbose=0, patience=30, min_delta=1e-3
+            monitor="val_f1_score", mode="max", verbose=0, patience=50, min_delta=1e-4
         )
         mcp = ModelCheckpoint(
             os.path.join(OUTPUT_PATH, f"best_{model_name}_model-{i+1}.h5"),
@@ -231,7 +233,7 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
                 parameters["optimizer_algo"],
             )
             batch_size = parameters["batch_size"]
-        model.fit(
+        history = model.fit(
             X_train,
             y_train,
             batch_size=batch_size,
@@ -246,7 +248,7 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
         predictions.append(y_pred)
         f1_scores.append(f1_score(y_test, y_pred, average="macro"))
     minutes = round(int(time.time() - start_time) / 60, 2)
-    return (predictions, np.mean(f1_scores), minutes)
+    return (predictions, np.mean(f1_scores), minutes, history)
 
 
 def model_ho(model_name, datas, epochs=30, parameter_space:dict={}, seed=42, trial_number=5):
@@ -300,3 +302,36 @@ def model_ho(model_name, datas, epochs=30, parameter_space:dict={}, seed=42, tri
     minutes = round(int(time.time() - start_time) / 60, 2)
     print(f"\nCompleted in {minutes} minutes")
     return trial.params
+
+
+def show_epoch_and_score(history):
+    epochs = list(range(1, len(history.history["loss"]) + 1))
+    epoch_and_score = pd.DataFrame(
+        {
+            "Epochs": epochs,
+            "train_score": history.history["f1_score"],
+            "val_score": history.history["val_f1_score"],
+        }
+    )
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=epoch_and_score["Epochs"],
+            y=epoch_and_score["train_score"],
+            mode="lines",
+            line=dict(color="red"),
+            name="Training Score",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=epoch_and_score["Epochs"],
+            y=epoch_and_score["val_score"],
+            mode="lines",
+            line=dict(color="darkgoldenrod"),
+            name="Validation Score",
+        )
+    )
+    msg = f"Epochs and Scores"
+    fig.update_layout(title=msg, title_x=0.5)
+    fig.show()
