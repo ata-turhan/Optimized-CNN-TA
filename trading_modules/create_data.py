@@ -4,19 +4,19 @@ import sklearn
 import sklearn.linear_model
 import talib
 from sklearn.linear_model import LinearRegression
+import plotly.express as px
+import plotly.graph_objects as go
 
 
-def HMA(df: pd.DataFrame, timeperiod: int = 14) -> float:
+def HMA(df: pd.DataFrame, timeperiod:int = 14) -> float:
     """
     Hull Moving Average.
     Formula:
     HMA = WMA(2*WMA(n/2) - WMA(n)), sqrt(n)
     """
-    hma = talib.WMA(
-        2 * talib.WMA(df, int(timeperiod / 2)) - talib.WMA(df, timeperiod),
-        int(np.sqrt(timeperiod)),
-    )
-    return hma
+    wma1 = talib.WMA(df, timeperiod=int(timeperiod/2))
+    wma2 = talib.WMA(df, timeperiod=timeperiod)
+    return talib.WMA(2*wma1 - wma2, timeperiod=int(timeperiod**0.5))
 
 
 def money_flow_volume_series(df: pd.DataFrame) -> pd.Series:
@@ -124,3 +124,210 @@ def adjustPrices(ohlcv: pd.DataFrame) -> None:
     ohlcv["Low"] = ohlcv["Low"] * adjustedRatio
     ohlcv["Open"] = ohlcv["Open"] * adjustedRatio
     ohlcv["Close"] = ohlcv["Close"] * adjustedRatio
+
+
+def show_label_distribution(df:pd.DataFrame):
+    label_and_counts = pd.DataFrame(
+    {"Label Names": ["Hold", "Buy", "Sell"], "Label Counts": df["Label"].value_counts().values})
+    fig = px.bar(label_and_counts, x="Label Names", y="Label Counts")
+    fig.show()
+
+
+def show_prices(ticker: str, df: pd.DataFrame, desc:str=""):
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df["Close"],
+            mode="lines",
+            line=dict(color="#FFFFFF"),
+            name="Close Price",
+        )
+    )
+    if desc == "":
+        msg = f"Close Price of '{ticker}'"
+    else:
+        msg = desc
+    fig.update_layout(title=msg, title_x=0.5)
+    fig.show()
+
+
+def show_price_and_labels(ticker: str, df: pd.DataFrame, desc:str=""):
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df["Close"],
+            mode="lines",
+            line=dict(color="#222266"),
+            name="Close Price",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=df.loc[df["Label"] == 1].index,
+            y=df.loc[df["Label"] == 1]["Close"],
+            mode="markers",
+            marker=dict(size=4, color="#2cc05c"),
+            name="Buy",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=df.loc[df["Label"] == 2].index,
+            y=df.loc[df["Label"] == 2]["Close"],
+            mode="markers",
+            marker=dict(size=4, color="#f62728"),
+            name="Sell",
+        )
+    )
+    if desc == "":
+        msg = f"Close Price with Labels of '{ticker}'"
+    else:
+        msg = desc
+    fig.update_layout(title=msg, title_x=0.5)
+    fig.show()
+
+
+def create_all_indicators_in_talib(df: pd.DataFrame, periods: list):
+    df_with_indicators = df.copy()
+    for i in periods:
+        df_with_indicators = df_with_indicators.assign(
+            **{
+                f"RSI-{i}": talib.RSI(df["Close"], timeperiod=i),
+                f"WILLR-{i}": talib.WILLR(
+                    df["High"], df["Low"], df["Close"], timeperiod=i
+                ),
+                f"STOCH-{i}": talib.STOCH(
+                    df["High"],
+                    df["Low"],
+                    df["Close"],
+                    fastk_period=i + 7,
+                    slowk_period=i - 4,
+                )[0],
+                f"STOCHF-{i}": talib.STOCHF(
+                    df["High"],
+                    df["Low"],
+                    df["Close"],
+                    fastk_period=i - 2,
+                    fastd_period=i - 4,
+                )[0],
+                f"SMA-{i}": talib.SMA(df["Close"], timeperiod=i),
+                f"EMA-{i}": talib.EMA(df["Close"], timeperiod=i),
+                f"WMA-{i}": talib.WMA(df["Close"], timeperiod=i),
+                f"HMA-{i}": HMA(df["Close"], timeperiod=i),
+                f"TEMA-{i}": talib.TEMA(df["Close"], timeperiod=i),
+                f"PPO-{i}": talib.PPO(df["Close"], fastperiod=i, slowperiod=i + 14),
+                f"ROC-{i}": talib.ROC(df_with_indicators["Close"], timeperiod=i),
+                f"CMO-{i}": talib.CMO(df_with_indicators["Close"], timeperiod=i),
+                f"MACD-{i}": talib.MACD(
+                    df_with_indicators["Close"], fastperiod=i, slowperiod=i + 14
+                )[0],
+                f"MAMA-{i}": talib.MAMA(
+                    df_with_indicators["Close"], fastlimit=1 / i, slowlimit=1 / (i + 14)
+                )[0],
+                f"STOCHRSI-{i}": talib.STOCHRSI(
+                    df_with_indicators["Close"], timeperiod=i
+                )[0],
+                f"DX-{i}": talib.DX(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    timeperiod=i,
+                ),
+                f"ADXR-{i}": talib.ADXR(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    timeperiod=i,
+                ),
+                f"CCI-{i}": talib.CCI(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    timeperiod=i,
+                ),
+                f"PLUS_DI-{i}": talib.PLUS_DI(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    timeperiod=i,
+                ),
+                f"MINUS_DI-{i}": talib.MINUS_DI(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    timeperiod=i,
+                ),
+                f"ATR-{i}": talib.ATR(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    timeperiod=i,
+                ),
+                f"SAR-{i}": talib.SAR(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    maximum=1 / i,
+                ),
+                f"PLUS_DM-{i}": talib.PLUS_DM(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    timeperiod=i,
+                ),
+                f"AROONOSC-{i}": talib.AROONOSC(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    timeperiod=i,
+                ),
+                f"MIDPRICE-{i}": talib.MIDPRICE(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    timeperiod=i,
+                ),
+                f"MFI-{i}": talib.MFI(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    df_with_indicators["Volume"],
+                    timeperiod=i,
+                ),
+                f"ADOSC-{i}": talib.ADOSC(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    df_with_indicators["Volume"],
+                    fastperiod=i - 4,
+                    slowperiod=i + 3,
+                ),
+                f"BBANDS-{i}": talib.BBANDS(df_with_indicators["Close"], timeperiod=i)[
+                    1
+                ],
+                f"CMF-{i}": CMF(df_with_indicators, timeperiod=i),
+                f"BOP": talib.BOP(
+                    df_with_indicators["Open"],
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                ),
+                f"TRANGE": talib.TRANGE(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                ),
+                f"SAREXT": talib.SAREXT(
+                    df_with_indicators["High"], df_with_indicators["Low"]
+                ),
+                f"AD": talib.AD(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    df_with_indicators["Volume"],
+                ),
+                f"OBV": talib.OBV(
+                    df_with_indicators["Close"], df_with_indicators["Volume"]
+                ),
+            }
+        )
+    df_with_indicators.dropna(inplace=True)
+    return df_with_indicators
