@@ -140,7 +140,7 @@ def show_prices(ticker: str, df: pd.DataFrame, desc:str=""):
             x=df.index,
             y=df["Close"],
             mode="lines",
-            line=dict(color="#FFFFFF"),
+            line=dict(color="red"),
             name="Close Price",
         )
     )

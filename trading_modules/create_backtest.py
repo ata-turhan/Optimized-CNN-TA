@@ -11,6 +11,9 @@ import yfinance as yf
 from matplotlib import pyplot as plt
 from plotly.subplots import make_subplots
 from sklearn.metrics import ConfusionMatrixDisplay, classification_report
+#import sys
+#sys.path.insert(1, "trading_modules")
+from .configurations import set_random_seed
 
 
 def second_2_minute_converter(seconds: int) -> str:
@@ -794,7 +797,9 @@ def financial_evaluation(
     show_charts: bool = True,
     show_time: bool = True,
     precision_point: int = 3,
+    seed:int = 42
 ) -> dict:
+    set_random_seed(42)
     start = time.time()
     if ohlcv.empty:
         print("OHLCV data is empty")
