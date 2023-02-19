@@ -329,7 +329,7 @@ def plot_tables(
     benchmark_returns = np.diff(benchmark_index) / benchmark_index[:-1]
 
     benchmark_return_value = round(
-        (benchmark_index[-1] - benchmark_index[1]) / benchmark_index[1] * 100,
+        (benchmark_index[-1] - benchmark_index[0]) / benchmark_index[0] * 100,
         precision_point,
     )
     buy_hold_return = round(

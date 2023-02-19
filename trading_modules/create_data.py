@@ -331,3 +331,79 @@ def create_all_indicators_in_talib(df: pd.DataFrame, periods: list):
         )
     df_with_indicators.dropna(inplace=True)
     return df_with_indicators
+
+
+def create_2d_data(datas: list, length: int):
+    matrix_datas = []
+    for i in range(len(datas)):
+        df = datas[i][0].drop(columns=["Label"])
+        df_matrix_train = pd.DataFrame(
+            index=df.iloc[length - 1 :].index,
+        )
+        df_matrix_train["Image"] = [np.zeros((length, length))] * df.iloc[
+            length - 1 :
+        ].shape[0]
+
+        for j in range(df_matrix_train.shape[0]):
+            matrix = df.iloc[j : j + length].values.reshape((length, length, -1))
+            df_matrix_train.iloc[j, 0] = matrix
+        df_matrix_train["Label"] = datas[i][0].iloc[length - 1 :, -1]
+
+        df = datas[i][1].drop(columns=["Label"])
+        df_matrix_test = pd.DataFrame(
+            index=df.iloc[length - 1 :].index,
+        )
+        df_matrix_test["Image"] = [np.zeros((length, length))] * df.iloc[
+            length - 1 :
+        ].shape[0]
+
+        for j in range(df_matrix_test.shape[0]):
+            matrix = df.iloc[j : j + length].values.reshape((length, length, -1))
+            df_matrix_test.iloc[j, 0] = matrix
+        df_matrix_test["Label"] = datas[i][1].iloc[length - 1 :, -1]
+
+        matrix_datas.append((df_matrix_train, df_matrix_test))
+
+    X_train_list = []
+    y_train_list = []
+    X_test_list = []
+    y_test_list = []
+
+    for i in range(len(matrix_datas)):
+        X_train = []
+        y_train = []
+        X_test = []
+        y_test = []
+
+        for j in range(matrix_datas[i][0].shape[0]):
+            X_train.append(matrix_datas[i][0].iloc[j, 0])
+            y_train.append(
+                tf.keras.utils.to_categorical(
+                    matrix_datas[i][0].iloc[j, 1], num_classes=3
+                )
+            )
+        X_train, y_train = np.array(X_train), np.array(y_train)
+        X_train = np.reshape(
+            X_train, newshape=(X_train.shape[0], X_train.shape[1], X_train.shape[2], 1)
+        )
+        X_train_list.append(X_train)
+        y_train_list.append(y_train)
+
+        for j in range(matrix_datas[i][1].shape[0]):
+            X_test.append(matrix_datas[i][1].iloc[j, 0])
+            y_test.append(matrix_datas[i][1].iloc[j, 1])
+        X_test, y_test = np.array(X_test), np.array(y_test)
+        X_test = np.reshape(
+            X_test, newshape=(X_test.shape[0], X_test.shape[1], X_test.shape[2], 1)
+        )
+        X_test_list.append(X_test)
+        y_test_list.append(y_test)
+
+    datas_2d = []
+
+    for i in range(len(datas_1d)):
+        datas_2d.append(
+            [X_train_list[i], y_train_list[i], X_test_list[i], y_test_list[i]]
+        )
+
+    return datas_2d
