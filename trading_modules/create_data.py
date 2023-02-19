@@ -6,6 +6,7 @@ import talib
 from sklearn.linear_model import LinearRegression
 import plotly.express as px
 import plotly.graph_objects as go
+import tensorflow as tf
 
 
 def HMA(df: pd.DataFrame, timeperiod:int = 14) -> float:
@@ -401,7 +402,7 @@ def create_2d_data(datas: list, length: int):
 
     datas_2d = []
 
-    for i in range(len(datas_1d)):
+    for i in range(len(datas)):
         datas_2d.append(
             [X_train_list[i], y_train_list[i], X_test_list[i], y_test_list[i]]
         )

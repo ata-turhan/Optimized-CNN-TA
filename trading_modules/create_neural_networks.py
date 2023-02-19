@@ -26,6 +26,7 @@ from sklearn.metrics import ConfusionMatrixDisplay, classification_report, f1_sc
 import optuna
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 def create_model_MLP(activation_func="swish", dropout_rate=0.2, optimizer_algo="adam"):
@@ -304,34 +305,54 @@ def model_ho(model_name, datas, epochs=30, parameter_space:dict={}, seed=42, tri
     return trial.params
 
 
-def show_epoch_and_score(history):
+def show_epoch_and_score(history, metrics):
     epochs = list(range(1, len(history.history["loss"]) + 1))
     epoch_and_score = pd.DataFrame(
         {
-            "Epochs": epochs,
-            "train_score": history.history["f1_score"],
-            "val_score": history.history["val_f1_score"],
+            "Epochs": epochs
         }
     )
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=epoch_and_score["Epochs"],
-            y=epoch_and_score["train_score"],
-            mode="lines",
-            line=dict(color="red"),
-            name="Training Score",
-        )
+    names = {}
+    for index, metric in enumerate(metrics):
+        names[f"{index}"] = f"{metric}".upper()
+    colors = [("burlywood", "cadetblue"), ("chartreuse", "chocolate"), ("coral", "cornflowerblue"), 
+              ("khaki", "crimson"), ("cyan", "darkblue"), ("darkcyan", "darkgoldenrod"),]
+    row_number = (len(metrics)+1)//2
+    fig = make_subplots(
+                        rows=row_number,
+                        cols=2,
+                        shared_xaxes=False,
+                        vertical_spacing=0.2,
+                        subplot_titles=("0123456"),
+                        row_width=[1/row_number]*row_number,
     )
-    fig.add_trace(
-        go.Scatter(
-            x=epoch_and_score["Epochs"],
-            y=epoch_and_score["val_score"],
-            mode="lines",
-            line=dict(color="darkgoldenrod"),
-            name="Validation Score",
+    for index, metric in enumerate(metrics):
+        epoch_and_score[f"train_{metric}"] = history.history[f"{metric}"]
+        epoch_and_score[f"val_{metric}"] = history.history[f"val_{metric}"]
+        fig.add_trace(
+            go.Scatter(
+                x=epoch_and_score["Epochs"],
+                y=epoch_and_score[f"train_{metric}"],
+                mode="lines",
+                line=dict(color=colors[index][0]),
+                name=f"Train {metric}",
+            ),
+            row = index//2+1,
+            col = index%2+1,
         )
-    )
-    msg = f"Epochs and Scores"
-    fig.update_layout(title=msg, title_x=0.5)
+        fig.add_trace(
+            go.Scatter(
+                x=epoch_and_score["Epochs"],
+                y=epoch_and_score[f"val_{metric}"],
+                mode="lines",
+                line=dict(color=colors[index][1]),
+                name=f"Validation {metric}",
+            ),
+            row = index//2+1,
+            col = index%2+1,
+        )
+    fig.update(layout_xaxis_rangeslider_visible=False)
+    fig.update_layout(height=400*row_number, width=1000,
+                  title_text='<span style="font-size: 30px;">Train and Validation Metrics</span>', title_x=0.5)
+    fig.for_each_annotation(lambda a: a.update(text = names.get(a.text, "None")))
     fig.show()
