@@ -205,7 +205,7 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
             mode="max",
         )
 
-        val_split_point = int(0.8 * len(datas[i][0]))
+        val_split_point = int(0.7 * len(datas[i][0]))
         if model_name == "MLP":
             X_train = datas[i][0][29:val_split_point].iloc[:, :-1]
             y_train = tf.keras.utils.to_categorical(
