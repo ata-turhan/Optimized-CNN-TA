@@ -1,7 +1,7 @@
+import datetime as dt
 import math
 import random
 import time
-import datetime as dt
 
 import numpy as np
 import pandas as pd
@@ -12,8 +12,9 @@ import yfinance as yf
 from matplotlib import pyplot as plt
 from plotly.subplots import make_subplots
 from sklearn.metrics import ConfusionMatrixDisplay, classification_report
-#import sys
-#sys.path.insert(1, "trading_modules")
+
+# import sys
+# sys.path.insert(1, "trading_modules")
 from .configurations import set_random_seed
 
 
@@ -290,11 +291,11 @@ def plot_init(
                         alpha,
                         threshold,
                         order,
-                        ("is used" if short == True else "is not used"),
+                        "is used" if short else "is not used",
                         short_fee,
-                        ("is used" if trailing_take_profit == True else "is not used"),
+                        "is used" if trailing_take_profit else "is not used",
                         f"%{take_profit}",
-                        ("is used" if trailing_stop_loss == True else "is not used"),
+                        "is used" if trailing_stop_loss else "is not used",
                         f"%{stop_loss}",
                         leverage,
                     ],
@@ -350,7 +351,7 @@ def plot_tables(
             (math.pow(total_return_value / 100 + 1, 1 / (year_count * 365)) - 1) * 100,
             precision_point,
         )
-    except:
+    except Exception:
         annualized_return_value = 0
         daily_return_value = 0
     profit_trade = (portfolio_returns > 0).sum()
@@ -433,7 +434,7 @@ def plot_tables(
     peak_capital = round(portfolio_value.max(), precision_point)
     through_capital = round(portfolio_value.min(), precision_point)
 
-    if show_tables == True:
+    if show_tables:
         fig = make_subplots(
             rows=3,
             cols=2,
@@ -690,7 +691,7 @@ def plot_charts(
     portfolio_value: np.array,
     liquidated: bool,
 ) -> None:
-    if liquidated == True:
+    if liquidated:
         print(
             "\n----------------------------\nThis strategy is liquidated\n-------------------------------"
         )
@@ -798,7 +799,7 @@ def financial_evaluation(
     show_charts: bool = True,
     show_time: bool = True,
     precision_point: int = 3,
-    seed:int = 42
+    seed: int = 42,
 ) -> dict:
     set_random_seed(42)
     start = time.time()
@@ -808,11 +809,11 @@ def financial_evaluation(
     if predictions.all() == None:
         print("Predictions data is empty")
         return
-    start_date = ohlcv.index[0] - dt.timedelta(days = 5)
-    end_date = ohlcv.index[-1] + dt.timedelta(days = 5)
+    start_date = ohlcv.index[0] - dt.timedelta(days=5)
+    end_date = ohlcv.index[-1] + dt.timedelta(days=5)
     benchmark_index = yf.download(
-            benchmark_ticker, start_date, end_date, progress=False, interval="1d"
-        )["Adj Close"]
+        benchmark_ticker, start_date, end_date, progress=False, interval="1d"
+    )["Adj Close"]
     benchmark_index = benchmark_index.loc[ohlcv.index]
     benchmark_index = np.array(benchmark_index)
     open_prices = ohlcv["Open"].values
@@ -831,8 +832,8 @@ def financial_evaluation(
     portfolio_value = np.zeros(len(predictions) + 1)
     portfolio_value[0] = initial_capital
     liquidated = False
-    if short == False:
-        for i in range(len(predictions)):
+    for i in range(len(predictions)):
+        if short == False:
             change = 0
             if long_open == True and (
                 low_prices[i] <= stop_loss_price <= high_prices[i]
@@ -878,8 +879,7 @@ def financial_evaluation(
                 stop_loss_price = close_prices[i] * (1 - stop_loss / 100)
             if long_open == True and trailing_take_profit == True:
                 take_profit_price = close_prices[i] * (1 + take_profit / 100)
-    elif short == True:
-        for i in range(len(predictions)):
+        elif short == True:
             change = 0
             if predictions[i] != 0 and long_open == False and short_open == False:
                 if predictions[i] == buyLabel:

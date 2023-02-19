@@ -1,8 +1,10 @@
 import copy
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.preprocessing import MaxAbsScaler
+
 
 def feature_selection(datas, selected_feature_count: int = 30, method: str = "ANOVA"):
     data_after_selection = copy.deepcopy(datas)
@@ -18,10 +20,9 @@ def feature_selection(datas, selected_feature_count: int = 30, method: str = "AN
 
         selected_features_boolean = select.get_support()
         features = list(data_after_selection[i][1].columns[:-1])
-        selected_features = []
-        for j in range(len(features)):
-            if selected_features_boolean[j]:
-                selected_features.append(features[j])
+        selected_features = [
+            features[j] for j in range(len(features)) if selected_features_boolean[j]
+        ]
         train_label = data_after_selection[i][0].Label
         test_label = data_after_selection[i][1].Label
 

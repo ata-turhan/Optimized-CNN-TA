@@ -1,10 +1,13 @@
-import time
 import copy
 import os
+import time
 
 import keras
 import numpy as np
+import optuna
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import tensorflow as tf
 import tensorflow_addons as tfa
 from keras.callbacks import Callback, CSVLogger, EarlyStopping, ModelCheckpoint
@@ -20,13 +23,11 @@ from keras.layers import (
     MaxPooling2D,
 )
 from keras.models import Sequential
-from tensorflow.keras.metrics import *
-from .configurations import set_random_seed
-from sklearn.metrics import ConfusionMatrixDisplay, classification_report, f1_score
-import optuna
-import plotly.express as px
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report, f1_score
+from tensorflow.keras.metrics import *
+
+from .configurations import set_random_seed
 
 
 def create_model_MLP(activation_func="swish", dropout_rate=0.2, optimizer_algo="adam"):
@@ -175,6 +176,7 @@ def create_model_CNN_2D(
     )
     return CNN_2D
 
+
 def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
     set_random_seed(seed)
 
@@ -203,8 +205,8 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
             mode="max",
         )
 
+        val_split_point = int(0.8 * len(datas[i][0]))
         if model_name == "MLP":
-            val_split_point = int(0.8 * len(datas[i][0]))
             X_train = datas[i][0][29:val_split_point].iloc[:, :-1]
             y_train = tf.keras.utils.to_categorical(
                 datas[i][0][29:val_split_point].iloc[:, -1], num_classes=3
@@ -216,7 +218,6 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
             X_test = datas[i][1][29:].iloc[:, :-1]
             y_test = datas[i][1][29:].iloc[:, -1]
         else:
-            val_split_point = int(0.8 * len(datas[i][0]))
             X_train = datas[i][0][:val_split_point]
             y_train = datas[i][1][:val_split_point]
             X_val = datas[i][0][val_split_point:]
@@ -252,7 +253,9 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
     return (predictions, np.mean(f1_scores), minutes, history)
 
 
-def model_ho(model_name, datas, epochs=30, parameter_space:dict={}, seed=42, trial_number=5):
+def model_ho(
+    model_name, datas, epochs=30, parameter_space: dict = {}, seed=42, trial_number=5
+):
     set_random_seed(seed)
     start_time = time.time()
 
@@ -287,7 +290,9 @@ def model_ho(model_name, datas, epochs=30, parameter_space:dict={}, seed=42, tri
                 ho_datas[i][0] = datas[i][0][:val_split_point]
                 ho_datas[i][3] = datas[i][1][val_split_point:].argmax(axis=-1)
                 ho_datas[i][1] = datas[i][1][:val_split_point]
-        return model_train_test(model_name, ho_datas, epochs=epochs, parameters=parameters, seed=seed)[1]
+        return model_train_test(
+            model_name, ho_datas, epochs=epochs, parameters=parameters, seed=seed
+        )[1]
 
     study = optuna.create_study(
         study_name=f"{model_name}_Bayesian_Optimization",
@@ -307,24 +312,24 @@ def model_ho(model_name, datas, epochs=30, parameter_space:dict={}, seed=42, tri
 
 def show_epoch_and_score(history, metrics):
     epochs = list(range(1, len(history.history["loss"]) + 1))
-    epoch_and_score = pd.DataFrame(
-        {
-            "Epochs": epochs
-        }
-    )
-    names = {}
-    for index, metric in enumerate(metrics):
-        names[f"{index}"] = f"{metric}".upper()
-    colors = [("burlywood", "cadetblue"), ("chartreuse", "chocolate"), ("coral", "cornflowerblue"), 
-              ("khaki", "crimson"), ("cyan", "darkblue"), ("darkcyan", "darkgoldenrod"),]
-    row_number = (len(metrics)+1)//2
+    epoch_and_score = pd.DataFrame({"Epochs": epochs})
+    names = {f"{index}": f"{metric}".upper() for index, metric in enumerate(metrics)}
+    colors = [
+        ("burlywood", "cadetblue"),
+        ("chartreuse", "chocolate"),
+        ("coral", "cornflowerblue"),
+        ("khaki", "crimson"),
+        ("cyan", "darkblue"),
+        ("darkcyan", "darkgoldenrod"),
+    ]
+    row_number = (len(metrics) + 1) // 2
     fig = make_subplots(
-                        rows=row_number,
-                        cols=2,
-                        shared_xaxes=False,
-                        vertical_spacing=0.2,
-                        subplot_titles=("0123456"),
-                        row_width=[1/row_number]*row_number,
+        rows=row_number,
+        cols=2,
+        shared_xaxes=False,
+        vertical_spacing=0.2,
+        subplot_titles=("0123456"),
+        row_width=[1 / row_number] * row_number,
     )
     for index, metric in enumerate(metrics):
         epoch_and_score[f"train_{metric}"] = history.history[f"{metric}"]
@@ -337,8 +342,8 @@ def show_epoch_and_score(history, metrics):
                 line=dict(color=colors[index][0]),
                 name=f"Train {metric}",
             ),
-            row = index//2+1,
-            col = index%2+1,
+            row=index // 2 + 1,
+            col=index % 2 + 1,
         )
         fig.add_trace(
             go.Scatter(
@@ -348,11 +353,15 @@ def show_epoch_and_score(history, metrics):
                 line=dict(color=colors[index][1]),
                 name=f"Validation {metric}",
             ),
-            row = index//2+1,
-            col = index%2+1,
+            row=index // 2 + 1,
+            col=index % 2 + 1,
         )
     fig.update(layout_xaxis_rangeslider_visible=False)
-    fig.update_layout(height=400*row_number, width=1000,
-                  title_text='<span style="font-size: 30px;">Train and Validation Metrics</span>', title_x=0.5)
-    fig.for_each_annotation(lambda a: a.update(text = names.get(a.text, "None")))
+    fig.update_layout(
+        height=400 * row_number,
+        width=1000,
+        title_text='<span style="font-size: 30px;">Train and Validation Metrics</span>',
+        title_x=0.5,
+    )
+    fig.for_each_annotation(lambda a: a.update(text=names.get(a.text, "None")))
     fig.show()

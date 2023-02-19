@@ -1,35 +1,34 @@
 import numpy as np
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import sklearn
 import sklearn.linear_model
 import talib
-from sklearn.linear_model import LinearRegression
-import plotly.express as px
-import plotly.graph_objects as go
 import tensorflow as tf
+from sklearn.linear_model import LinearRegression
 
 
-def HMA(df: pd.DataFrame, timeperiod:int = 14) -> float:
+def HMA(df: pd.DataFrame, timeperiod: int = 14) -> float:
     """
     Hull Moving Average.
     Formula:
     HMA = WMA(2*WMA(n/2) - WMA(n)), sqrt(n)
     """
-    wma1 = talib.WMA(df, timeperiod=int(timeperiod/2))
+    wma1 = talib.WMA(df, timeperiod=timeperiod // 2)
     wma2 = talib.WMA(df, timeperiod=timeperiod)
-    return talib.WMA(2*wma1 - wma2, timeperiod=int(timeperiod**0.5))
+    return talib.WMA(2 * wma1 - wma2, timeperiod=int(timeperiod**0.5))
 
 
 def money_flow_volume_series(df: pd.DataFrame) -> pd.Series:
     """
     Calculates money flow series
     """
-    mfv = (
+    return (
         df["Volume"]
         * (2 * df["Close"] - df["High"] - df["Low"])
         / (df["High"] - df["Low"])
     )
-    return mfv
 
 
 def money_flow_volume(df: pd.DataFrame, timeperiod: int = 20) -> pd.Series:
@@ -127,14 +126,18 @@ def adjustPrices(ohlcv: pd.DataFrame) -> None:
     ohlcv["Close"] = ohlcv["Close"] * adjustedRatio
 
 
-def show_label_distribution(df:pd.DataFrame):
+def show_label_distribution(df: pd.DataFrame):
     label_and_counts = pd.DataFrame(
-    {"Label Names": ["Hold", "Buy", "Sell"], "Label Counts": df["Label"].value_counts().values})
+        {
+            "Label Names": ["Hold", "Buy", "Sell"],
+            "Label Counts": df["Label"].value_counts().values,
+        }
+    )
     fig = px.bar(label_and_counts, x="Label Names", y="Label Counts")
     fig.show()
 
 
-def show_prices(ticker: str, df: pd.DataFrame, desc:str=""):
+def show_prices(ticker: str, df: pd.DataFrame, desc: str = ""):
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -145,15 +148,12 @@ def show_prices(ticker: str, df: pd.DataFrame, desc:str=""):
             name="Close Price",
         )
     )
-    if desc == "":
-        msg = f"Close Price of '{ticker}'"
-    else:
-        msg = desc
+    msg = desc or f"Close Price of '{ticker}'"
     fig.update_layout(title=msg, title_x=0.5)
     fig.show()
 
 
-def show_price_and_labels(ticker: str, df: pd.DataFrame, desc:str=""):
+def show_price_and_labels(ticker: str, df: pd.DataFrame, desc: str = ""):
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -182,10 +182,7 @@ def show_price_and_labels(ticker: str, df: pd.DataFrame, desc:str=""):
             name="Sell",
         )
     )
-    if desc == "":
-        msg = f"Close Price with Labels of '{ticker}'"
-    else:
-        msg = desc
+    msg = desc or f"Close Price with Labels of '{ticker}'"
     fig.update_layout(title=msg, title_x=0.5)
     fig.show()
 
@@ -222,10 +219,14 @@ def create_all_indicators_in_talib(df: pd.DataFrame, periods: list):
                 f"ROC-{i}": talib.ROC(df_with_indicators["Close"], timeperiod=i),
                 f"CMO-{i}": talib.CMO(df_with_indicators["Close"], timeperiod=i),
                 f"MACD-{i}": talib.MACD(
-                    df_with_indicators["Close"], fastperiod=i, slowperiod=i + 14
+                    df_with_indicators["Close"],
+                    fastperiod=i,
+                    slowperiod=i + 14,
                 )[0],
                 f"MAMA-{i}": talib.MAMA(
-                    df_with_indicators["Close"], fastlimit=1 / i, slowlimit=1 / (i + 14)
+                    df_with_indicators["Close"],
+                    fastlimit=1 / i,
+                    slowlimit=1 / (i + 14),
                 )[0],
                 f"STOCHRSI-{i}": talib.STOCHRSI(
                     df_with_indicators["Close"], timeperiod=i
@@ -305,27 +306,27 @@ def create_all_indicators_in_talib(df: pd.DataFrame, periods: list):
                     1
                 ],
                 f"CMF-{i}": CMF(df_with_indicators, timeperiod=i),
-                f"BOP": talib.BOP(
+                "BOP": talib.BOP(
                     df_with_indicators["Open"],
                     df_with_indicators["High"],
                     df_with_indicators["Low"],
                     df_with_indicators["Close"],
                 ),
-                f"TRANGE": talib.TRANGE(
+                "TRANGE": talib.TRANGE(
                     df_with_indicators["High"],
                     df_with_indicators["Low"],
                     df_with_indicators["Close"],
                 ),
-                f"SAREXT": talib.SAREXT(
+                "SAREXT": talib.SAREXT(
                     df_with_indicators["High"], df_with_indicators["Low"]
                 ),
-                f"AD": talib.AD(
+                "AD": talib.AD(
                     df_with_indicators["High"],
                     df_with_indicators["Low"],
                     df_with_indicators["Close"],
                     df_with_indicators["Volume"],
                 ),
-                f"OBV": talib.OBV(
+                "OBV": talib.OBV(
                     df_with_indicators["Close"], df_with_indicators["Volume"]
                 ),
             }
@@ -336,8 +337,8 @@ def create_all_indicators_in_talib(df: pd.DataFrame, periods: list):
 
 def create_2d_data(datas: list, length: int):
     matrix_datas = []
-    for i in range(len(datas)):
-        df = datas[i][0].drop(columns=["Label"])
+    for data in datas:
+        df = data[0].drop(columns=["Label"])
         df_matrix_train = pd.DataFrame(
             index=df.iloc[length - 1 :].index,
         )
@@ -348,9 +349,9 @@ def create_2d_data(datas: list, length: int):
         for j in range(df_matrix_train.shape[0]):
             matrix = df.iloc[j : j + length].values.reshape((length, length, -1))
             df_matrix_train.iloc[j, 0] = matrix
-        df_matrix_train["Label"] = datas[i][0].iloc[length - 1 :, -1]
+        df_matrix_train["Label"] = data[0].iloc[length - 1 :, -1]
 
-        df = datas[i][1].drop(columns=["Label"])
+        df = data[1].drop(columns=["Label"])
         df_matrix_test = pd.DataFrame(
             index=df.iloc[length - 1 :].index,
         )
@@ -361,7 +362,7 @@ def create_2d_data(datas: list, length: int):
         for j in range(df_matrix_test.shape[0]):
             matrix = df.iloc[j : j + length].values.reshape((length, length, -1))
             df_matrix_test.iloc[j, 0] = matrix
-        df_matrix_test["Label"] = datas[i][1].iloc[length - 1 :, -1]
+        df_matrix_test["Label"] = data[1].iloc[length - 1 :, -1]
 
         matrix_datas.append((df_matrix_train, df_matrix_test))
 
@@ -370,18 +371,16 @@ def create_2d_data(datas: list, length: int):
     X_test_list = []
     y_test_list = []
 
-    for i in range(len(matrix_datas)):
+    for matrix_data in matrix_datas:
         X_train = []
         y_train = []
         X_test = []
         y_test = []
 
-        for j in range(matrix_datas[i][0].shape[0]):
-            X_train.append(matrix_datas[i][0].iloc[j, 0])
+        for j in range(matrix_data[0].shape[0]):
+            X_train.append(matrix_data[0].iloc[j, 0])
             y_train.append(
-                tf.keras.utils.to_categorical(
-                    matrix_datas[i][0].iloc[j, 1], num_classes=3
-                )
+                tf.keras.utils.to_categorical(matrix_data[0].iloc[j, 1], num_classes=3)
             )
         X_train, y_train = np.array(X_train), np.array(y_train)
         X_train = np.reshape(
@@ -390,9 +389,9 @@ def create_2d_data(datas: list, length: int):
         X_train_list.append(X_train)
         y_train_list.append(y_train)
 
-        for j in range(matrix_datas[i][1].shape[0]):
-            X_test.append(matrix_datas[i][1].iloc[j, 0])
-            y_test.append(matrix_datas[i][1].iloc[j, 1])
+        for j in range(matrix_data[1].shape[0]):
+            X_test.append(matrix_data[1].iloc[j, 0])
+            y_test.append(matrix_data[1].iloc[j, 1])
         X_test, y_test = np.array(X_test), np.array(y_test)
         X_test = np.reshape(
             X_test, newshape=(X_test.shape[0], X_test.shape[1], X_test.shape[2], 1)
@@ -400,11 +399,7 @@ def create_2d_data(datas: list, length: int):
         X_test_list.append(X_test)
         y_test_list.append(y_test)
 
-    datas_2d = []
-
-    for i in range(len(datas)):
-        datas_2d.append(
-            [X_train_list[i], y_train_list[i], X_test_list[i], y_test_list[i]]
-        )
-
-    return datas_2d
+    return [
+        [X_train_list[i], y_train_list[i], X_test_list[i], y_test_list[i]]
+        for i in range(len(datas))
+    ]
