@@ -1,6 +1,7 @@
 import math
 import random
 import time
+import datetime as dt
 
 import numpy as np
 import pandas as pd
@@ -807,13 +808,13 @@ def financial_evaluation(
     if predictions.all() == None:
         print("Predictions data is empty")
         return
-    start_date = ohlcv.index[0]
-    end_date = ohlcv.index[-1]
-    benchmark_index = np.array(
-        yf.download(
+    start_date = ohlcv.index[0] - dt.timedelta(days = 5)
+    end_date = ohlcv.index[-1] + dt.timedelta(days = 5)
+    benchmark_index = yf.download(
             benchmark_ticker, start_date, end_date, progress=False, interval="1d"
         )["Adj Close"]
-    )
+    benchmark_index = benchmark_index.loc[ohlcv.index]
+    benchmark_index = np.array(benchmark_index)
     open_prices = ohlcv["Open"].values
     high_prices = ohlcv["High"].values
     low_prices = ohlcv["Low"].values
