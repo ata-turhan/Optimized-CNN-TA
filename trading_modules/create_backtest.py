@@ -236,10 +236,12 @@ def plot_init(
     order: int,
     short: bool,
     short_fee: float,
+    standard_take_profit: bool,
     trailing_take_profit: bool,
-    take_profit: float,
+    take_profit_ratio: float,
+    standard_stop_loss: bool,
     trailing_stop_loss: bool,
-    stop_loss: float,
+    stop_loss_ratio: float,
     leverage: int,
 ) -> None:
     fig = make_subplots(
@@ -274,10 +276,12 @@ def plot_init(
                         "Order",
                         "Short",
                         "Short Fee",
+                        "Standard Take Profit",
                         "Trailing Take Profit",
-                        "Take Profit",
+                        "Take Profit Ratio",
+                        "Standard Stop Loss",
                         "Trailing Stop Loss",
-                        "Stop Loss",
+                        "Stop Loss Ratio",
                         "Leverage Ratio",
                     ],
                     [
@@ -293,10 +297,12 @@ def plot_init(
                         order,
                         "is used" if short else "is not used",
                         short_fee,
+                        "is used" if standard_take_profit else "is not used",
                         "is used" if trailing_take_profit else "is not used",
-                        f"%{take_profit}",
+                        f"%{take_profit_ratio}",
+                        "is used" if standard_stop_loss else "is not used",
                         "is used" if trailing_stop_loss else "is not used",
-                        f"%{stop_loss}",
+                        f"%{stop_loss_ratio}",
                         leverage,
                     ],
                 ],
@@ -326,7 +332,7 @@ def plot_tables(
     order: int = 1,
     precision_point: int = 3,
     show_tables: bool = False,
-) -> None:
+) -> dict:
     portfolio_returns = np.diff(portfolio_value) / portfolio_value[:-1]
     benchmark_returns = np.diff(benchmark_index) / benchmark_index[:-1]
 
@@ -772,9 +778,6 @@ def plot_charts(
 
 
 def financial_evaluation(
-    holdLabel: int = 0,
-    buyLabel: int = 1,
-    sellLabel: int = 2,
     ticker: str = "SPY",
     benchmark_ticker: str = "SPY",
     ohlcv: pd.DataFrame = None,
@@ -788,10 +791,12 @@ def financial_evaluation(
     order_type: str = "market",
     short: bool = False,
     short_fee: float = 1,
+    standard_take_profit: bool = False,
     trailing_take_profit: bool = False,
-    take_profit: float = 10,
+    take_profit_ratio: float = 10,
+    standard_stop_loss: bool = False,
     trailing_stop_loss: bool = False,
-    stop_loss: float = 10,
+    stop_loss_ratio: float = 10,
     leverage: int = 1,
     miss_rate: int = 10,
     show_initial_configuration: bool = True,
@@ -802,6 +807,9 @@ def financial_evaluation(
     seed: int = 42,
 ) -> dict:
     set_random_seed(42)
+    HOLD_LABEL = 0
+    BUY_LABEL = 1
+    SELL_LABEL = 2
     start = time.time()
     if ohlcv.empty:
         print("OHLCV data is empty")
@@ -832,15 +840,17 @@ def financial_evaluation(
     portfolio_value = np.zeros(len(predictions) + 1)
     portfolio_value[0] = initial_capital
     liquidated = False
+    trade_day = 0
     for i in range(len(predictions)):
+        trade_day = i
         if short == False:
             change = 0
-            if long_open == True and (
+            if standard_take_profit == True and standard_stop_loss == True and long_open == True and (
                 low_prices[i] <= stop_loss_price <= high_prices[i]
                 or low_prices[i] <= take_profit_price <= high_prices[i]
             ):
-                predictions[i] = sellLabel
-            if predictions[i] == buyLabel and long_open == False:
+                predictions[i] = SELL_LABEL
+            if predictions[i] == BUY_LABEL and long_open == False:
                 if order_type == "market":
                     long_open = True
                     long_price = round(random.uniform(low_prices[i], high_prices[i]), 6)
@@ -848,15 +858,16 @@ def financial_evaluation(
                     long_open = True
                     long_price = open_prices[i]
                 if long_open == True:
-                    stop_loss_price = long_price * (1 - stop_loss / 100)
-                    take_profit_price = long_price * (1 + take_profit / 100)
+                    stop_loss_price = long_price * (1 - stop_loss_ratio / 100)
+                    take_profit_price = long_price * (1 + take_profit_ratio / 100)
                     capital -= commission
-            elif predictions[i] == sellLabel and long_open == True:
+            elif predictions[i] == SELL_LABEL and long_open == True:
                 if order_type == "market":
                     long_open = False
+                    s = round(random.uniform(low_prices[i], high_prices[i]), 6)
                     change = (
                         (
-                            round(random.uniform(low_prices[i], high_prices[i]), 6)
+                            s
                             - long_price
                         )
                         / long_price
@@ -876,13 +887,13 @@ def financial_evaluation(
                 total_day_position_open += 1
             portfolio_value[i + 1] = capital
             if long_open == True and trailing_stop_loss == True:
-                stop_loss_price = close_prices[i] * (1 - stop_loss / 100)
+                stop_loss_price = close_prices[i] * (1 - stop_loss_ratio / 100)
             if long_open == True and trailing_take_profit == True:
-                take_profit_price = close_prices[i] * (1 + take_profit / 100)
+                take_profit_price = close_prices[i] * (1 + take_profit_ratio / 100)
         elif short == True:
             change = 0
-            if predictions[i] != 0 and long_open == False and short_open == False:
-                if predictions[i] == buyLabel:
+            if predictions[i] != HOLD_LABEL and long_open == False and short_open == False:
+                if predictions[i] == BUY_LABEL:
                     if order_type == "market":
                         long_open = True
                         long_price = round(
@@ -894,9 +905,9 @@ def financial_evaluation(
                     if long_open == True:
                         capital -= commission
                         total_trade_made += 1
-                        stop_loss_price = long_price * (1 - stop_loss / 100)
-                        take_profit_price = long_price * (1 + take_profit / 100)
-                elif predictions[i] == sellLabel:
+                        stop_loss_price = long_price * (1 - stop_loss_ratio / 100)
+                        take_profit_price = long_price * (1 + take_profit_ratio / 100)
+                elif predictions[i] == SELL_LABEL:
                     if order_type == "market":
                         short_open = True
                         short_price = round(
@@ -908,20 +919,20 @@ def financial_evaluation(
                     if short_open == True:
                         capital -= commission + short_fee
                         total_trade_made += 1
-                        stop_loss_price = short_price * (1 + stop_loss / 100)
-                        take_profit_price = short_price * (1 - take_profit / 100)
-            if long_open == True and (
+                        stop_loss_price = short_price * (1 + stop_loss_ratio / 100)
+                        take_profit_price = short_price * (1 - take_profit_ratio / 100)
+            if standard_take_profit == True and standard_stop_loss == True  and long_open == True and (
                 low_prices[i] <= stop_loss_price <= high_prices[i]
                 or low_prices[i] <= take_profit_price <= high_prices[i]
             ):
-                predictions[i] = sellLabel
-            if short_open == True and (
+                predictions[i] = SELL_LABEL
+            if standard_take_profit == True and standard_stop_loss == True and short_open == True and (
                 low_prices[i] <= stop_loss_price <= high_prices[i]
                 or low_prices[i] <= take_profit_price <= high_prices[i]
             ):
-                predictions[i] = buyLabel
+                predictions[i] = BUY_LABEL
             if (
-                predictions[i] == sellLabel
+                predictions[i] == SELL_LABEL
                 and long_open == True
                 and short_open == False
             ):
@@ -944,10 +955,10 @@ def financial_evaluation(
                         liquidated = True
                         break
                     total_trade_made += 1
-                    stop_loss_price = short_price * (1 + stop_loss / 100)
-                    take_profit_price = short_price * (1 - take_profit / 100)
+                    stop_loss_price = short_price * (1 + stop_loss_ratio / 100)
+                    take_profit_price = short_price * (1 - take_profit_ratio / 100)
             elif (
-                predictions[i] == buyLabel and long_open == False and short_open == True
+                predictions[i] == BUY_LABEL and long_open == False and short_open == True
             ):
                 if order_type == "market":
                     long_open = True
@@ -966,30 +977,31 @@ def financial_evaluation(
                         liquidated = True
                         break
                     total_trade_made += 1
-                    stop_loss_price = long_price * (1 - stop_loss / 100)
-                    take_profit_price = long_price * (1 + take_profit / 100)
+                    stop_loss_price = long_price * (1 - stop_loss_ratio / 100)
+                    take_profit_price = long_price * (1 + take_profit_ratio / 100)
             if long_open == True or short_open == True:
                 total_day_position_open += 1
             portfolio_value[i + 1] = capital
             if trailing_stop_loss == True and short_open == False and long_open == True:
-                stop_loss_price = close_prices[i] * (1 - stop_loss / 100)
+                stop_loss_price = close_prices[i] * (1 - stop_loss_ratio / 100)
             if trailing_stop_loss == True and short_open == True and long_open == False:
-                stop_loss_price = close_prices[i] * (1 + stop_loss / 100)
+                stop_loss_price = close_prices[i] * (1 + stop_loss_ratio / 100)
             if (
                 trailing_take_profit == True
                 and short_open == False
                 and long_open == True
             ):
-                take_profit_price = close_prices[i] * (1 + take_profit / 100)
+                take_profit_price = close_prices[i] * (1 + take_profit_ratio / 100)
             if (
                 trailing_take_profit == True
                 and short_open == True
                 and long_open == False
             ):
-                take_profit_price = close_prices[i] * (1 - take_profit / 100)
+                take_profit_price = close_prices[i] * (1 - take_profit_ratio / 100)
+    trade_day += 2
     if total_trade_made == 0:
         print("No trade executed")
-        return
+        return {}
     end = time.time()
     if show_time == True:
         print(f"\nBacktest was completed in {second_2_minute_converter(end-start)}.\n")
@@ -1007,16 +1019,18 @@ def financial_evaluation(
             order,
             short,
             short_fee,
+            standard_take_profit,
             trailing_take_profit,
-            take_profit,
+            take_profit_ratio,
+            standard_stop_loss,
             trailing_stop_loss,
-            stop_loss,
+            stop_loss_ratio,
             leverage,
         )
     metrics = plot_tables(
-        portfolio_value[:i],
-        benchmark_index[:i],
-        close_prices[:i],
+        portfolio_value[1:trade_day],
+        benchmark_index[:trade_day],
+        close_prices[:trade_day],
         total_trade_made,
         total_day_position_open,
         risk_free_rate,
@@ -1027,7 +1041,7 @@ def financial_evaluation(
         show_tables,
     )
     if show_charts:
-        plot_charts("SPY", ohlcv[:i], predictions[:i], portfolio_value[:i], liquidated)
+        plot_charts("SPY", ohlcv[:trade_day], predictions[:trade_day], portfolio_value[1:trade_day], liquidated)
     return metrics
 
 

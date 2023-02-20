@@ -4,6 +4,11 @@ import numpy as np
 import pandas as pd
 from ta.volatility import BollingerBands
 
+def create_buy_and_hold_predictions(price_length:int):
+    predictions = np.array([0] * price_length)
+    predictions[0], predictions[-1] = 1, 2
+    return predictions
+
 
 def create_random_predictions(
     df: pd.DataFrame, hold_ratio: int = 10, buy_ratio: int = 1, sell_ratio: int = 1
