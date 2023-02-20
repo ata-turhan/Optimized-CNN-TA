@@ -3,6 +3,7 @@ import random
 import numpy as np
 import pandas as pd
 from ta.volatility import BollingerBands
+from .configurations import shift_predictions
 
 def create_buy_and_hold_predictions(price_length:int):
     predictions = np.array([0] * price_length)
@@ -19,6 +20,7 @@ def create_random_predictions(
     weight_list = [hold_ratio, buy_ratio, sell_ratio]
     for i in range(test_values.shape[0]):
         predictions[i] = random.choices(label_list, weights=weight_list)[0]
+    predictions = shift_predictions(predictions)
     return predictions
 
 
@@ -41,6 +43,7 @@ def create_rsi_predictions(
         ):
             predictions[i] = 2
             last_label = 2
+    predictions = shift_predictions(predictions)
     return predictions
 
 
@@ -65,6 +68,7 @@ def create_ema_crossover_predictions(
         ):
             predictions[i] = 2
             last_label = 2
+    predictions = shift_predictions(predictions)
     return predictions
 
 
@@ -94,4 +98,5 @@ def create_bollinger_bands_predictions(
         ):
             predictions[i] = 2
             last_label = 2
+    predictions = shift_predictions(predictions)
     return predictions
