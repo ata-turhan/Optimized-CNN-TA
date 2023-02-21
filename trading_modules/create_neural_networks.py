@@ -24,7 +24,7 @@ from keras.layers import (
 )
 from keras.models import Sequential
 from plotly.subplots import make_subplots
-from sklearn.metrics import ConfusionMatrixDisplay, classification_report, f1_score
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report, precision_recall_fscore_support
 from tensorflow.keras.metrics import *
 
 from .configurations import set_random_seed
@@ -177,12 +177,12 @@ def create_model_CNN_2D(
     return CNN_2D
 
 
-def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
+def model_train_test(model_name, datas, epochs=100, parameters=None, metric:str="f1_score", seed=42):
     set_random_seed(seed)
 
     start_time = time.time()
     predictions = []
-    f1_scores = []
+    scores = []
 
     model_creations = {
         "MLP": create_model_MLP,
@@ -190,15 +190,21 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
         "GRU": create_model_GRU,
         "CNN_2D": create_model_CNN_2D,
     }
+    metric_indices = {
+        "precision":0,
+        "recall":1,
+        "f1_score":2
+    }
     create_model = model_creations[model_name]
     OUTPUT_PATH = "./outputs"
+    history=None
     for i in range(len(datas)):
         es = EarlyStopping(
-            monitor="val_f1_score", mode="max", verbose=0, patience=50, min_delta=1e-4
+            monitor=f"val_{metric}", mode="max", verbose=0, patience=50, min_delta=1e-4
         )
         mcp = ModelCheckpoint(
             os.path.join(OUTPUT_PATH, f"best_{model_name}_model-{i+1}.h5"),
-            monitor="val_f1_score",
+            monitor=f"val_{metric}",
             verbose=0,
             save_best_only=True,
             save_weights_only=False,
@@ -248,13 +254,13 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, seed=42):
         y_pred = model.predict(X_test)
         y_pred = y_pred.argmax(axis=-1)
         predictions.append(y_pred)
-        f1_scores.append(f1_score(y_test, y_pred, average="macro"))
+        scores.append(precision_recall_fscore_support(y_test, y_pred, average="macro")[metric_indices[metric]])
     minutes = round(int(time.time() - start_time) / 60, 2)
-    return (predictions, np.mean(f1_scores), minutes, history)
+    return (predictions, np.mean(scores), minutes, history)
 
 
 def model_ho(
-    model_name, datas, epochs=30, parameter_space: dict = {}, seed=42, trial_number=5
+    model_name, datas, epochs=30, parameter_space: dict = {}, metric:str="f1_score", seed=42, trial_number=5
 ):
     set_random_seed(seed)
     start_time = time.time()
@@ -291,7 +297,7 @@ def model_ho(
                 ho_datas[i][3] = datas[i][1][val_split_point:].argmax(axis=-1)
                 ho_datas[i][1] = datas[i][1][:val_split_point]
         return model_train_test(
-            model_name, ho_datas, epochs=epochs, parameters=parameters, seed=seed
+            model_name, ho_datas, epochs=epochs, parameters=parameters, metric=metric, seed=seed
         )[1]
 
     study = optuna.create_study(
@@ -303,8 +309,8 @@ def model_ho(
     trial = study.best_trial
 
     print("\n------------------------------------------")
-    print("Best F1 Macro: {}".format(trial.value))
-    print("Best hyperparameters: {}".format(trial.params))
+    print(f"Best {metric}: {trial.value}")
+    print(f"Best hyperparameters: {trial.params}")
     minutes = round(int(time.time() - start_time) / 60, 2)
     print(f"\nCompleted in {minutes} minutes")
     return trial.params
