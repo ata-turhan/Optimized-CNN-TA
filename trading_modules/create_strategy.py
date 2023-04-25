@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pandas as pd
 from ta.volatility import BollingerBands
-from .configurations import shift_predictions
+from .configurations import set_random_seed, shift_predictions
 
 def create_buy_and_hold_predictions(price_length:int):
     predictions = np.array([0] * price_length)
@@ -12,8 +12,9 @@ def create_buy_and_hold_predictions(price_length:int):
 
 
 def create_random_predictions(
-    df: pd.DataFrame, hold_ratio: int = 10, buy_ratio: int = 1, sell_ratio: int = 1
+    df: pd.DataFrame, hold_ratio: int = 10, buy_ratio: int = 1, sell_ratio: int = 1, seed:int = 42
 ) -> np.array:
+    set_random_seed(seed=seed)
     test_values = df
     predictions = np.array([0] * len(test_values))
     label_list = [0, 1, 2]

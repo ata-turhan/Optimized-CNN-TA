@@ -287,7 +287,7 @@ def model_ho(
         }
         ho_datas = copy.deepcopy(datas)
         for i in range(len(datas)):
-            val_split_point = int(0.7 * len(datas[i][0]))
+            val_split_point = int(0.5 * len(datas[i][0]))
             if model_name == "MLP":
                 ho_datas[i][1] = datas[i][0][val_split_point:]
                 ho_datas[i][0] = datas[i][0][:val_split_point]

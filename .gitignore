@@ -2,3 +2,6 @@
 /outputs
 MLP.ipynb
 *.docx
+*.doc
+__pycache__
+/Codes
