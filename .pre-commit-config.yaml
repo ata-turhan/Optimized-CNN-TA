@@ -20,7 +20,3 @@ repos:
       args: [--line-length=72]
     - id: nbqa-flake8
       args: ["--nbqa-diff"]
-    - id: nbqa-pyupgrade
-      args: ["--py310-plus"]
-    - id: nbqa-isort
-      args: [--line-length=72]
