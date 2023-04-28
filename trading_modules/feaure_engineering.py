@@ -49,24 +49,26 @@ def transform():
 """
 
 
-def scaling(datas, method: str = "MaxAbs"):
-    data_after_scaling = copy.deepcopy(datas)
-    for i in range(len(data_after_scaling)):
-        if method == "MaxAbs":
-            scaler = MaxAbsScaler()
-        scaler.fit(data_after_scaling[i][0])
-        scaled_train = scaler.transform(data_after_scaling[i][0])
-        scaled_test = scaler.transform(data_after_scaling[i][1])
-        data_after_scaling[i][0] = pd.DataFrame(
-            data=scaled_train,
-            columns=data_after_scaling[i][0].columns,
-            index=data_after_scaling[i][0].index,
-        )
-        data_after_scaling[i][0]["Label"] = data_after_scaling[i][0]["Label"] * 2
-        data_after_scaling[i][1] = pd.DataFrame(
-            data=scaled_test,
-            columns=data_after_scaling[i][1].columns,
-            index=data_after_scaling[i][1].index,
-        )
-        data_after_scaling[i][1]["Label"] = data_after_scaling[i][1]["Label"] * 2
-    return data_after_scaling
+def scaling(data, split_index: int, method: str = "MaxAbs"):
+    train_data = data.iloc[:split_index]
+    test_data = data.iloc[split_index:]
+
+    if method == "MaxAbs":
+        scaler = MaxAbsScaler()
+    scaler.fit(train_data)
+    scaled_train = scaler.transform(train_data)
+    scaled_test = scaler.transform(test_data)
+    train_data = pd.DataFrame(
+        data=scaled_train,
+        columns=train_data.columns,
+        index=train_data.index,
+    )
+    train_data["Label"] = train_data["Label"] * 2
+    test_data = pd.DataFrame(
+        data=scaled_test,
+        columns=test_data.columns,
+        index=test_data.index,
+    )
+    test_data["Label"] = test_data["Label"] * 2
+
+    return pd.concat([train_data, test_data])
