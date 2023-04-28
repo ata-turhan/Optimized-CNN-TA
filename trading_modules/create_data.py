@@ -402,7 +402,9 @@ def create_ta_technical_indicators(ohlcv: pd.DataFrame) -> pd.DataFrame:
             return data
 
 
-def create_all_indicators_in_talib(df: pd.DataFrame, periods: list):
+def create_all_indicators_in_talib(
+    df: pd.DataFrame, periods: list, include_periodless_indicators: bool = False
+):
     df_with_indicators = df.copy()
     for i in periods:
         df_with_indicators = df_with_indicators.assign(
@@ -521,6 +523,11 @@ def create_all_indicators_in_talib(df: pd.DataFrame, periods: list):
                     1
                 ],
                 f"CMF-{i}": CMF(df_with_indicators, timeperiod=i),
+            }
+        )
+    if include_periodless_indicators:
+        df_with_indicators = df_with_indicators.assign(
+            **{
                 "BOP": talib.BOP(
                     df_with_indicators["Open"],
                     df_with_indicators["High"],
