@@ -24,7 +24,11 @@ from keras.layers import (
 )
 from keras.models import Sequential
 from plotly.subplots import make_subplots
-from sklearn.metrics import ConfusionMatrixDisplay, classification_report, precision_recall_fscore_support
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    classification_report,
+    precision_recall_fscore_support,
+)
 from tensorflow.keras.metrics import *
 
 from .configurations import set_random_seed
@@ -35,7 +39,7 @@ def create_model_MLP(activation_func="swish", dropout_rate=0.2, optimizer_algo="
     MLP.add(
         Dense(
             64,
-            input_shape=(30,),
+            input_shape=(256,),
             activation=activation_func,
             kernel_initializer=tf.keras.initializers.HeUniform(),
         )
@@ -138,7 +142,7 @@ def create_model_CNN_2D(
         Conv2D(
             filters=64,
             kernel_size=(kernel, kernel),
-            input_shape=(30, 30, 1),
+            input_shape=(16, 16, 1),
             padding="same",
             activation=activation_func,
             kernel_initializer=tf.keras.initializers.HeUniform(),
@@ -177,7 +181,9 @@ def create_model_CNN_2D(
     return CNN_2D
 
 
-def model_train_test(model_name, datas, epochs=100, parameters=None, metric:str="f1_score", seed=42):
+def model_train_test(
+    model_name, datas, epochs=100, parameters=None, metric: str = "f1_score", seed=42
+):
     set_random_seed(seed)
 
     start_time = time.time()
@@ -190,14 +196,10 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, metric:str=
         "GRU": create_model_GRU,
         "CNN_2D": create_model_CNN_2D,
     }
-    metric_indices = {
-        "precision":0,
-        "recall":1,
-        "f1_score":2
-    }
+    metric_indices = {"precision": 0, "recall": 1, "f1_score": 2}
     create_model = model_creations[model_name]
     OUTPUT_PATH = "./outputs"
-    history=None
+    history = None
     for i in range(len(datas)):
         es = EarlyStopping(
             monitor=f"val_{metric}", mode="max", verbose=0, patience=50, min_delta=1e-4
@@ -210,7 +212,7 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, metric:str=
             save_weights_only=False,
             mode="max",
         )
-
+        """
         val_split_point = int(0.7 * len(datas[i][0]))
         if model_name == "MLP":
             X_train = datas[i][0][29:val_split_point].iloc[:, :-1]
@@ -230,6 +232,7 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, metric:str=
             y_val = datas[i][1][val_split_point:]
             X_test = datas[i][2]
             y_test = datas[i][3]
+        """
 
         if parameters is None:
             model = create_model()
@@ -241,6 +244,22 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, metric:str=
                 parameters["optimizer_algo"],
             )
             batch_size = parameters["batch_size"]
+
+        if model_name == "MLP":
+            X_train = datas[i][0].iloc[:, :-1]
+            y_train = tf.keras.utils.to_categorical(
+                datas[i][0].iloc[:, -1], num_classes=3
+            )
+            X_test = datas[i][1].iloc[:, :-1]
+            y_test = datas[i][1].iloc[:, -1]
+        else:
+            X_train = datas[i][0].iloc[:, :-1].to_numpy().reshape(-1, 16, 16, 1)
+            y_train = tf.keras.utils.to_categorical(
+                datas[i][0].iloc[:, -1], num_classes=3
+            )
+            X_test = datas[i][1].iloc[:, :-1].to_numpy().reshape(-1, 16, 16, 1)
+            y_test = datas[i][1].iloc[:, -1]
+
         history = model.fit(
             X_train,
             y_train,
@@ -248,19 +267,30 @@ def model_train_test(model_name, datas, epochs=100, parameters=None, metric:str=
             epochs=epochs,
             verbose=0,
             callbacks=[es, mcp],
-            validation_data=(X_val, y_val),
+            # validation_data=(X_val, y_val),
+            validation_split=0.5,
             class_weight={0: 1, 1: 10, 2: 10},
         )
         y_pred = model.predict(X_test)
         y_pred = y_pred.argmax(axis=-1)
         predictions.append(y_pred)
-        scores.append(precision_recall_fscore_support(y_test, y_pred, average="macro")[metric_indices[metric]])
+        scores.append(
+            precision_recall_fscore_support(y_test, y_pred, average="macro")[
+                metric_indices[metric]
+            ]
+        )
     minutes = round(int(time.time() - start_time) / 60, 2)
     return (predictions, np.mean(scores), minutes, history)
 
 
 def model_ho(
-    model_name, datas, epochs=30, parameter_space: dict = {}, metric:str="f1_score", seed=42, trial_number=5
+    model_name,
+    datas,
+    epochs=30,
+    parameter_space: dict = {},
+    metric: str = "f1_score",
+    seed=42,
+    trial_number=5,
 ):
     set_random_seed(seed)
     start_time = time.time()
@@ -297,7 +327,12 @@ def model_ho(
                 ho_datas[i][3] = datas[i][1][val_split_point:].argmax(axis=-1)
                 ho_datas[i][1] = datas[i][1][:val_split_point]
         return model_train_test(
-            model_name, ho_datas, epochs=epochs, parameters=parameters, metric=metric, seed=seed
+            model_name,
+            ho_datas,
+            epochs=epochs,
+            parameters=parameters,
+            metric=metric,
+            seed=seed,
         )[1]
 
     study = optuna.create_study(
