@@ -208,6 +208,7 @@ def model_train_test(
     if parameters is None:
         model = create_model()
         batch_size = 32
+        model_save_name = f"{model_name}_model - Defaul Parameters.h5"
     else:
         model = create_model(
             parameters["activation_func"],
@@ -215,13 +216,14 @@ def model_train_test(
             parameters["optimizer_algo"],
         )
         batch_size = parameters["batch_size"]
+        model_save_name = f"{model_name}_model - HO Parameters.h5"
 
     OUTPUT_PATH = "../models/"
     es = EarlyStopping(
         monitor=f"val_{metric}", mode="max", verbose=0, patience=50, min_delta=1e-4
     )
     mcp = ModelCheckpoint(
-        os.path.join(OUTPUT_PATH, f"{model_name}_model- Defaul Parameters.h5"),
+        os.path.join(OUTPUT_PATH, model_save_name),
         monitor=f"val_{metric}",
         verbose=0,
         save_best_only=True,
@@ -284,6 +286,9 @@ def model_train_test(
                 metric_indices[metric]
             ]
         )
+        clear_output(wait=True)
+        print(f"{i}. dataset was trained & tested")
+    clear_output(wait=True)
     minutes = round(int(time.time() - start_time) / 60, 2)
     return (predictions, np.mean(scores), minutes, history)
 
@@ -416,17 +421,9 @@ def model_ho(
             "optimizer_algo": optimizer_algo,
             "batch_size": batch_size,
         }
-        ho_datas = copy.deepcopy(datas)
-        for i in range(len(datas)):
-            val_split_point = int(0.5 * len(datas[i][0]))
-            if model_name == "MLP":
-                ho_datas[i][1] = datas[i][0][val_split_point:]
-                ho_datas[i][0] = datas[i][0][:val_split_point]
-            else:
-                ho_datas[i][2] = datas[i][0][val_split_point:]
-                ho_datas[i][0] = datas[i][0][:val_split_point]
-                ho_datas[i][3] = datas[i][1][val_split_point:].argmax(axis=-1)
-                ho_datas[i][1] = datas[i][1][:val_split_point]
+        ho_datas = [[]]
+        ho_datas[0].append(datas[0][0].iloc[: len(datas[0][0]) // 2])
+        ho_datas[0].append(datas[0][0].iloc[len(datas[0][0]) // 2 :])
         return model_train_test(
             model_name,
             ho_datas,
