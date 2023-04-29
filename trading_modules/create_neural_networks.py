@@ -196,22 +196,34 @@ def model_train_test(
         "GRU": create_model_GRU,
         "CNN_2D": create_model_CNN_2D,
     }
-    metric_indices = {"precision": 0, "recall": 1, "f1_score": 2}
     create_model = model_creations[model_name]
-    OUTPUT_PATH = "./outputs"
+    if parameters is None:
+        model = create_model()
+        batch_size = 32
+    else:
+        model = create_model(
+            parameters["activation_func"],
+            parameters["dropout_rate"],
+            parameters["optimizer_algo"],
+        )
+        batch_size = parameters["batch_size"]
+
+    OUTPUT_PATH = "models/"
+    es = EarlyStopping(
+        monitor=f"val_{metric}", mode="max", verbose=0, patience=50, min_delta=1e-4
+    )
+    mcp = ModelCheckpoint(
+        os.path.join(OUTPUT_PATH, f"best_{model_name}_model.h5"),
+        monitor=f"val_{metric}",
+        verbose=0,
+        save_best_only=True,
+        save_weights_only=False,
+        mode="max",
+    )
+
+    metric_indices = {"precision": 0, "recall": 1, "f1_score": 2}
     history = None
     for i in range(len(datas)):
-        es = EarlyStopping(
-            monitor=f"val_{metric}", mode="max", verbose=0, patience=50, min_delta=1e-4
-        )
-        mcp = ModelCheckpoint(
-            os.path.join(OUTPUT_PATH, f"best_{model_name}_model-{i+1}.h5"),
-            monitor=f"val_{metric}",
-            verbose=0,
-            save_best_only=True,
-            save_weights_only=False,
-            mode="max",
-        )
         """
         val_split_point = int(0.7 * len(datas[i][0]))
         if model_name == "MLP":
@@ -234,18 +246,10 @@ def model_train_test(
             y_test = datas[i][3]
         """
 
-        if parameters is None:
-            model = create_model()
-            batch_size = 32
+        if i == 0:
+            train = datas[i][0]
         else:
-            model = create_model(
-                parameters["activation_func"],
-                parameters["dropout_rate"],
-                parameters["optimizer_algo"],
-            )
-            batch_size = parameters["batch_size"]
-
-        train = datas[i][0]
+            train = datas[i - 1][1]
         test = datas[i][1]
 
         if model_name == "MLP":
