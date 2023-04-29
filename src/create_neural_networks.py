@@ -208,7 +208,7 @@ def model_train_test(
         )
         batch_size = parameters["batch_size"]
 
-    OUTPUT_PATH = "models/"
+    OUTPUT_PATH = "../models/"
     es = EarlyStopping(
         monitor=f"val_{metric}", mode="max", verbose=0, patience=50, min_delta=1e-4
     )
