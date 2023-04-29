@@ -213,7 +213,7 @@ def model_train_test(
         monitor=f"val_{metric}", mode="max", verbose=0, patience=50, min_delta=1e-4
     )
     mcp = ModelCheckpoint(
-        os.path.join(OUTPUT_PATH, f"best_{model_name}_model.h5"),
+        os.path.join(OUTPUT_PATH, f"{model_name}_model- Defaul Parameters.h5"),
         monitor=f"val_{metric}",
         verbose=0,
         save_best_only=True,
@@ -224,28 +224,6 @@ def model_train_test(
     metric_indices = {"precision": 0, "recall": 1, "f1_score": 2}
     history = None
     for i in range(len(datas)):
-        """
-        val_split_point = int(0.7 * len(datas[i][0]))
-        if model_name == "MLP":
-            X_train = datas[i][0][29:val_split_point].iloc[:, :-1]
-            y_train = tf.keras.utils.to_categorical(
-                datas[i][0][29:val_split_point].iloc[:, -1], num_classes=3
-            )
-            X_val = datas[i][0][val_split_point:].iloc[:, :-1]
-            y_val = tf.keras.utils.to_categorical(
-                datas[i][0][val_split_point:].iloc[:, -1], num_classes=3
-            )
-            X_test = datas[i][1][29:].iloc[:, :-1]
-            y_test = datas[i][1][29:].iloc[:, -1]
-        else:
-            X_train = datas[i][0][:val_split_point]
-            y_train = datas[i][1][:val_split_point]
-            X_val = datas[i][0][val_split_point:]
-            y_val = datas[i][1][val_split_point:]
-            X_test = datas[i][2]
-            y_test = datas[i][3]
-        """
-
         if i == 0:
             train = datas[i][0]
         else:
@@ -300,6 +278,71 @@ def model_train_test(
         )
     minutes = round(int(time.time() - start_time) / 60, 2)
     return (predictions, np.mean(scores), minutes, history)
+
+
+def ml_model_train_test(
+    model_name, datas, epochs=100, parameters=None, metric: str = "f1_score", seed=42
+):
+    set_random_seed(seed)
+
+    start_time = time.time()
+    predictions = []
+    scores = []
+
+    model_creations = {
+        "XGBOOST": XGBClassifier,
+        "LIGHTGBM": LGBMClassifier,
+        "CATBOOST": CatBoostClassifier,
+    }
+    create_model = model_creations[model_name]
+    if parameters is None:
+        if model_name == "CATBOOST":
+            model = create_model(verbose=False)
+        else:
+            model = create_model()
+        batch_size = 32
+    else:
+        model = create_model(
+            parameters["activation_func"],
+            parameters["dropout_rate"],
+            parameters["optimizer_algo"],
+        )
+        batch_size = parameters["batch_size"]
+
+    metric_indices = {"precision": 0, "recall": 1, "f1_score": 2}
+    history = None
+    for i in range(len(datas)):
+        train = datas[i][0]
+        test = datas[i][1]
+
+        X_train = train.iloc[:, :-1]
+        y_train = train.iloc[:, -1]
+        X_test = test.iloc[:, :-1]
+        y_test = test.iloc[:, -1]
+        X_train = X_train.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", x))
+        X_test = X_test.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", x))
+
+        model.fit(
+            X_train,
+            y_train,
+            batch_size=batch_size,
+            epochs=epochs,
+            verbose=0,
+            # callbacks=[es, mcp],
+            # validation_data=(X_val, y_val),
+            validation_split=0.5,
+            # class_weight={0: 1, 1: 10, 2: 10},
+        )
+        y_pred = model.predict(X_test)
+        y_pred = y_pred.argmax(axis=-1)
+        predictions.append(y_pred)
+        scores.append(
+            precision_recall_fscore_support(y_test, y_pred, average="macro")[
+                metric_indices[metric]
+            ]
+        )
+    minutes = round(int(time.time() - start_time) / 60, 2)
+    return (predictions, np.mean(scores), minutes)
 
 
 def model_ho(

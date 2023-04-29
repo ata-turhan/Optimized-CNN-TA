@@ -822,6 +822,8 @@ def financial_evaluation(
     benchmark_index = yf.download(
         benchmark_ticker, start_date, end_date, progress=False, interval="1d"
     )["Adj Close"]
+    benchmark_index = benchmark_index.tz_localize(None)
+    benchmark_index.index.names = ["Date"]
     benchmark_index = benchmark_index.loc[ohlcv.index]
     benchmark_index = np.array(benchmark_index)
     open_prices = ohlcv["Open"].values
@@ -845,9 +847,14 @@ def financial_evaluation(
         trade_day = i
         if short == False:
             change = 0
-            if standard_take_profit == True and standard_stop_loss == True and long_open == True and (
-                low_prices[i] <= stop_loss_price <= high_prices[i]
-                or low_prices[i] <= take_profit_price <= high_prices[i]
+            if (
+                standard_take_profit == True
+                and standard_stop_loss == True
+                and long_open == True
+                and (
+                    low_prices[i] <= stop_loss_price <= high_prices[i]
+                    or low_prices[i] <= take_profit_price <= high_prices[i]
+                )
             ):
                 predictions[i] = SELL_LABEL
             if predictions[i] == BUY_LABEL and long_open == False:
@@ -865,14 +872,7 @@ def financial_evaluation(
                 if order_type == "market":
                     long_open = False
                     s = round(random.uniform(low_prices[i], high_prices[i]), 6)
-                    change = (
-                        (
-                            s
-                            - long_price
-                        )
-                        / long_price
-                        * leverage
-                    )
+                    change = (s - long_price) / long_price * leverage
                 elif order_type == "limit" and random.randint(1, miss_rate) != 1:
                     long_open = False
                     change = (open_prices[i] - long_price) / long_price * leverage
@@ -892,7 +892,11 @@ def financial_evaluation(
                 take_profit_price = close_prices[i] * (1 + take_profit_ratio / 100)
         elif short == True:
             change = 0
-            if predictions[i] != HOLD_LABEL and long_open == False and short_open == False:
+            if (
+                predictions[i] != HOLD_LABEL
+                and long_open == False
+                and short_open == False
+            ):
                 if predictions[i] == BUY_LABEL:
                     if order_type == "market":
                         long_open = True
@@ -921,14 +925,24 @@ def financial_evaluation(
                         total_trade_made += 1
                         stop_loss_price = short_price * (1 + stop_loss_ratio / 100)
                         take_profit_price = short_price * (1 - take_profit_ratio / 100)
-            if standard_take_profit == True and standard_stop_loss == True  and long_open == True and (
-                low_prices[i] <= stop_loss_price <= high_prices[i]
-                or low_prices[i] <= take_profit_price <= high_prices[i]
+            if (
+                standard_take_profit == True
+                and standard_stop_loss == True
+                and long_open == True
+                and (
+                    low_prices[i] <= stop_loss_price <= high_prices[i]
+                    or low_prices[i] <= take_profit_price <= high_prices[i]
+                )
             ):
                 predictions[i] = SELL_LABEL
-            if standard_take_profit == True and standard_stop_loss == True and short_open == True and (
-                low_prices[i] <= stop_loss_price <= high_prices[i]
-                or low_prices[i] <= take_profit_price <= high_prices[i]
+            if (
+                standard_take_profit == True
+                and standard_stop_loss == True
+                and short_open == True
+                and (
+                    low_prices[i] <= stop_loss_price <= high_prices[i]
+                    or low_prices[i] <= take_profit_price <= high_prices[i]
+                )
             ):
                 predictions[i] = BUY_LABEL
             if (
@@ -958,7 +972,9 @@ def financial_evaluation(
                     stop_loss_price = short_price * (1 + stop_loss_ratio / 100)
                     take_profit_price = short_price * (1 - take_profit_ratio / 100)
             elif (
-                predictions[i] == BUY_LABEL and long_open == False and short_open == True
+                predictions[i] == BUY_LABEL
+                and long_open == False
+                and short_open == True
             ):
                 if order_type == "market":
                     long_open = True
@@ -1041,7 +1057,13 @@ def financial_evaluation(
         show_tables,
     )
     if show_charts:
-        plot_charts("SPY", ohlcv[:trade_day], predictions[:trade_day], portfolio_value[1:trade_day], liquidated)
+        plot_charts(
+            "SPY",
+            ohlcv[:trade_day],
+            predictions[:trade_day],
+            portfolio_value[1:trade_day],
+            liquidated,
+        )
     return metrics
 
 
