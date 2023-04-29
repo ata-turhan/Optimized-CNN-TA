@@ -1,6 +1,14 @@
 import copy
 import os
 import time
+import re
+
+from sklearn.utils.class_weight import compute_sample_weight
+from IPython.display import clear_output, display
+
+from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
+from lightgbm import LGBMClassifier
 
 import keras
 import numpy as np
@@ -281,10 +289,14 @@ def model_train_test(
 
 
 def ml_model_train_test(
-    model_name, datas, epochs=100, parameters=None, metric: str = "f1_score", seed=42
+    model_name,
+    datas,
+    epochs=100,
+    parameters=None,
+    metric: str = "f1_score",
+    seed=42,
 ):
     set_random_seed(seed)
-
     start_time = time.time()
     predictions = []
     scores = []
@@ -297,9 +309,13 @@ def ml_model_train_test(
     create_model = model_creations[model_name]
     if parameters is None:
         if model_name == "CATBOOST":
-            model = create_model(verbose=False)
-        else:
+            model = create_model(
+                class_weights={0: 1, 1: 10, 2: 10},
+            )
+        elif model_name == "XGBOOST":
             model = create_model()
+        else:
+            model = create_model(class_weight={0: 1, 1: 10, 2: 10})
         batch_size = 32
     else:
         model = create_model(
@@ -312,7 +328,10 @@ def ml_model_train_test(
     metric_indices = {"precision": 0, "recall": 1, "f1_score": 2}
     history = None
     for i in range(len(datas)):
-        train = datas[i][0]
+        if i == 0:
+            train = datas[i][0]
+        else:
+            train = datas[i - 1][1]
         test = datas[i][1]
 
         X_train = train.iloc[:, :-1]
@@ -322,25 +341,45 @@ def ml_model_train_test(
         X_train = X_train.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", x))
         X_test = X_test.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", x))
 
-        model.fit(
-            X_train,
-            y_train,
-            batch_size=batch_size,
-            epochs=epochs,
-            verbose=0,
-            # callbacks=[es, mcp],
-            # validation_data=(X_val, y_val),
-            validation_split=0.5,
-            # class_weight={0: 1, 1: 10, 2: 10},
-        )
+        if model_name == "XGBOOST":
+            params = {"verbose": False}
+            sample_weights = compute_sample_weight(class_weight="balanced", y=y_train)
+            if i == 0:
+                model.fit(X_train, y_train, sample_weight=sample_weights)
+            else:
+                model.fit(
+                    X_train,
+                    y_train,
+                    sample_weight=sample_weights,
+                    xgb_model=model.get_booster(),
+                )
+        elif model_name == "LIGHTGBM":
+            if i == 0:
+                model.fit(
+                    X_train,
+                    y_train,
+                )
+            else:
+                model.fit(X_train, y_train, init_model="LightGBM-model.h5")
+            model.booster_.save_model("LightGBM-model.h5")
+        elif model_name == "CATBOOST":
+            if i == 0:
+                model.fit(
+                    X_train,
+                    y_train,
+                )
+            else:
+                model.fit(X_train, y_train, init_model=model)
         y_pred = model.predict(X_test)
-        y_pred = y_pred.argmax(axis=-1)
         predictions.append(y_pred)
         scores.append(
             precision_recall_fscore_support(y_test, y_pred, average="macro")[
                 metric_indices[metric]
             ]
         )
+        clear_output(wait=True)
+        print(f"{i}. dataset was trained & tested")
+    clear_output(wait=True)
     minutes = round(int(time.time() - start_time) / 60, 2)
     return (predictions, np.mean(scores), minutes)
 
