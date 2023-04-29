@@ -8,8 +8,6 @@ repos:
     -   id: check-xml
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
-    -   id: check-added-large-files
-        args: [— maxkb=2000]
     -   id: check-merge-conflict
     -   id: requirements-txt-fixer
     -   id: check-ast
