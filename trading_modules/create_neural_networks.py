@@ -70,7 +70,7 @@ def create_model_LSTM(activation_func="swish", dropout_rate=0.2, optimizer_algo=
         LSTM(
             units=64,
             return_sequences=True,
-            input_shape=(30, 30),
+            input_shape=(15, 256),
             activation=activation_func,
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
         )
@@ -103,7 +103,7 @@ def create_model_GRU(activation_func="swish", dropout_rate=0.2, optimizer_algo="
         GRU(
             units=64,
             return_sequences=True,
-            input_shape=(30, 30),
+            input_shape=(15, 256),
             activation=activation_func,
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
         )
@@ -245,20 +245,35 @@ def model_train_test(
             )
             batch_size = parameters["batch_size"]
 
+        train = datas[i][0]
+        test = datas[i][1]
+
         if model_name == "MLP":
-            X_train = datas[i][0].iloc[:, :-1]
-            y_train = tf.keras.utils.to_categorical(
-                datas[i][0].iloc[:, -1], num_classes=3
-            )
-            X_test = datas[i][1].iloc[:, :-1]
-            y_test = datas[i][1].iloc[:, -1]
-        else:
-            X_train = datas[i][0].iloc[:, :-1].to_numpy().reshape(-1, 16, 16, 1)
-            y_train = tf.keras.utils.to_categorical(
-                datas[i][0].iloc[:, -1], num_classes=3
-            )
-            X_test = datas[i][1].iloc[:, :-1].to_numpy().reshape(-1, 16, 16, 1)
-            y_test = datas[i][1].iloc[:, -1]
+            X_train = train.iloc[:, :-1]
+            y_train = tf.keras.utils.to_categorical(train.iloc[:, -1], num_classes=3)
+            X_test = test.iloc[:, :-1]
+            y_test = test.iloc[:, -1]
+        elif model_name == "CNN_2D":
+            X_train = train.iloc[:, :-1].to_numpy().reshape(-1, 16, 16, 1)
+            y_train = tf.keras.utils.to_categorical(train.iloc[:, -1], num_classes=3)
+            X_test = test.iloc[:, :-1].to_numpy().reshape(-1, 16, 16, 1)
+            y_test = test.iloc[:, -1]
+        elif model_name == "LSTM" or model_name == "GRU":
+            X_train, y_train = [], []
+            for i in range(len(train) - 14):
+                X_train.append(train.iloc[i : i + 15, :-1])
+                y_train.append(
+                    tf.keras.utils.to_categorical(train.iloc[i + 14, -1], num_classes=3)
+                )
+            X_train = np.array(X_train)
+            y_train = np.array(y_train)
+
+            X_test, y_test = [], []
+            for i in range(len(test) - 14):
+                X_test.append(test.iloc[i : i + 15, :-1])
+                y_test.append(test.iloc[i + 14, -1])
+            X_test = np.array(X_test)
+            y_test = np.array(y_test)
 
         history = model.fit(
             X_train,

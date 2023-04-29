@@ -1,12 +1,13 @@
-import copy
-
 import numpy as np
 import pandas as pd
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.preprocessing import MaxAbsScaler
 
 
-def feature_selection(data, selected_feature_count: int = 30, method: str = "ANOVA"):
+def feature_selection(
+    data, selected_feature_count: int = 30, method: str = "ANOVA", seed=42
+):
+    np.random.seed(seed)
     data_after_selection = data.copy(deep=True)
     if method == "ANOVA":
         select = SelectKBest(score_func=f_classif, k=selected_feature_count)
@@ -49,7 +50,8 @@ def transform():
 """
 
 
-def scaling(data, split_index: int, method: str = "MaxAbs"):
+def scaling(data, split_index: int, method: str = "MaxAbs", seed=42):
+    np.random.seed(seed)
     train_data = data.iloc[:split_index]
     test_data = data.iloc[split_index:]
 
