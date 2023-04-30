@@ -202,7 +202,7 @@ def model_train_test(
         "MLP": create_model_MLP,
         "LSTM": create_model_LSTM,
         "GRU": create_model_GRU,
-        "CNN_2D": create_model_CNN_2D,
+        "CNN": create_model_CNN_2D,
     }
     create_model = model_creations[model_name]
     if parameters is None:
@@ -245,7 +245,7 @@ def model_train_test(
             y_train = tf.keras.utils.to_categorical(train.iloc[:, -1], num_classes=3)
             X_test = test.iloc[:, :-1]
             y_test = test.iloc[:, -1]
-        elif model_name == "CNN_2D":
+        elif model_name == "CNN":
             X_train = train.iloc[:, :-1].to_numpy().reshape(-1, 16, 16, 1)
             y_train = tf.keras.utils.to_categorical(train.iloc[:, -1], num_classes=3)
             X_test = test.iloc[:, :-1].to_numpy().reshape(-1, 16, 16, 1)
@@ -323,12 +323,7 @@ def ml_model_train_test(
             model = create_model(class_weight={0: 1, 1: 10, 2: 10})
         batch_size = 32
     else:
-        model = create_model(
-            parameters["activation_func"],
-            parameters["dropout_rate"],
-            parameters["optimizer_algo"],
-        )
-        batch_size = parameters["batch_size"]
+        model = create_model(**parameters)
 
     metric_indices = {"precision": 0, "recall": 1, "f1_score": 2}
     history = None
@@ -400,38 +395,33 @@ def model_ho(
 ):
     set_random_seed(seed)
     start_time = time.time()
+    ml_models = ["LIGHTGBM", "XGBOOST", "CATBOOST"]
+    dl_models = ["MLP", "GRU", "LSTM", "CNN"]
 
     def objective(trial):
-        activation_func = trial.suggest_categorical(
-            name="activation_func", choices=parameter_space["activation_func"]
-        )
-        dropout_rate = trial.suggest_categorical(
-            "dropout_rate", parameter_space["dropout_rate"]
-        )
-        optimizer_algo = trial.suggest_categorical(
-            "optimizer_algo", parameter_space["optimizer_algo"]
-        )
-        batch_size = trial.suggest_categorical(
-            "batch_size", parameter_space["batch_size"]
-        )
-        # lr_max = trial.suggest_categorical("learning_rate_max", [1e-1, 1e-2, 1e-3, 1e-4])
-        parameters = {
-            "activation_func": activation_func,
-            "dropout_rate": dropout_rate,
-            "optimizer_algo": optimizer_algo,
-            "batch_size": batch_size,
-        }
+        parameters = {}
+        for key, value in parameter_space.items():
+            parameters[key] = trial.suggest_categorical(name=key, choices=value)
         ho_datas = [[]]
         ho_datas[0].append(datas[0][0].iloc[: len(datas[0][0]) // 2])
         ho_datas[0].append(datas[0][0].iloc[len(datas[0][0]) // 2 :])
-        return model_train_test(
-            model_name,
-            ho_datas,
-            epochs=epochs,
-            parameters=parameters,
-            metric=metric,
-            seed=seed,
-        )[1]
+        if model_name in ml_models:
+            return ml_model_train_test(
+                model_name,
+                ho_datas,
+                parameters=parameters,
+                seed=seed,
+            )[1]
+
+        elif model_name in dl_models:
+            return model_train_test(
+                model_name,
+                ho_datas,
+                epochs=epochs,
+                parameters=parameters,
+                metric=metric,
+                seed=seed,
+            )[1]
 
     study = optuna.create_study(
         study_name=f"{model_name}_Bayesian_Optimization",
