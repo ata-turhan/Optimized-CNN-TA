@@ -19,6 +19,7 @@ from Pattern import (
     longleg_doji,
 )
 from sklearn.cluster import AgglomerativeClustering
+from .configurations import set_random_seed
 
 
 def create_buy_and_hold_predictions(price_length: int):
@@ -174,6 +175,7 @@ def candlestick_pattern_trading(
 
 
 def calculate_support_resistance(df, rolling_wave_length, num_clusters, area):
+    set_random_seed(42)
     date = df.index
     # Reset index for merging
     df.reset_index(inplace=True)
