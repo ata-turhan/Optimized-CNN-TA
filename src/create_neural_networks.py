@@ -360,7 +360,7 @@ def ml_model_train_test(
                     y_train,
                 )
             else:
-                model.fit(X_train, y_train, init_model="LightGBM-model.h5")
+                model.fit(X_train, y_train, init_model="../models/LightGBM-model.h5")
             model.booster_.save_model("../models/LightGBM-model.h5")
         elif model_name == "CATBOOST":
             if i == 0:
