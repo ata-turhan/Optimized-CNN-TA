@@ -407,6 +407,9 @@ def create_all_indicators_in_talib(
         df_with_indicators = df_with_indicators.assign(
             **{
                 f"RSI-{i}": talib.RSI(df["Close"], timeperiod=i),
+                f"STOCHRSI-{i}": talib.STOCHRSI(
+                    df_with_indicators["Close"], timeperiod=i
+                )[0],
                 f"WILLR-{i}": talib.WILLR(
                     df["High"], df["Low"], df["Close"], timeperiod=i
                 ),
@@ -424,28 +427,25 @@ def create_all_indicators_in_talib(
                     fastk_period=i - 2,
                     fastd_period=i - 4,
                 )[0],
+                f"PPO-{i}": talib.PPO(df["Close"], fastperiod=i, slowperiod=i + 14),
+                f"ROC-{i}": talib.ROC(df_with_indicators["Close"], timeperiod=i),
                 f"SMA-{i}": talib.SMA(df["Close"], timeperiod=i),
                 f"EMA-{i}": talib.EMA(df["Close"], timeperiod=i),
                 f"WMA-{i}": talib.WMA(df["Close"], timeperiod=i),
                 f"HMA-{i}": HMA(df["Close"], timeperiod=i),
                 f"TEMA-{i}": talib.TEMA(df["Close"], timeperiod=i),
-                f"PPO-{i}": talib.PPO(df["Close"], fastperiod=i, slowperiod=i + 14),
-                f"ROC-{i}": talib.ROC(df_with_indicators["Close"], timeperiod=i),
                 f"CMO-{i}": talib.CMO(df_with_indicators["Close"], timeperiod=i),
                 f"MACD-{i}": talib.MACD(
                     df_with_indicators["Close"],
                     fastperiod=i,
                     slowperiod=i + 14,
                 )[0],
-                f"MAMA-{i}": talib.MAMA(
-                    df_with_indicators["Close"],
-                    fastlimit=1 / i,
-                    slowlimit=1 / (i + 14),
-                )[0],
-                f"STOCHRSI-{i}": talib.STOCHRSI(
-                    df_with_indicators["Close"], timeperiod=i
-                )[0],
-                f"DX-{i}": talib.DX(
+                f"SAR-{i}": talib.SAR(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    maximum=1 / i,
+                ),
+                f"CCI-{i}": talib.CCI(
                     df_with_indicators["High"],
                     df_with_indicators["Low"],
                     df_with_indicators["Close"],
@@ -457,7 +457,12 @@ def create_all_indicators_in_talib(
                     df_with_indicators["Close"],
                     timeperiod=i,
                 ),
-                f"CCI-{i}": talib.CCI(
+                f"MAMA-{i}": talib.MAMA(
+                    df_with_indicators["Close"],
+                    fastlimit=1 / i,
+                    slowlimit=1 / (i + 14),
+                )[0],
+                f"DX-{i}": talib.DX(
                     df_with_indicators["High"],
                     df_with_indicators["Low"],
                     df_with_indicators["Close"],
@@ -474,17 +479,6 @@ def create_all_indicators_in_talib(
                     df_with_indicators["Low"],
                     df_with_indicators["Close"],
                     timeperiod=i,
-                ),
-                f"ATR-{i}": talib.ATR(
-                    df_with_indicators["High"],
-                    df_with_indicators["Low"],
-                    df_with_indicators["Close"],
-                    timeperiod=i,
-                ),
-                f"SAR-{i}": talib.SAR(
-                    df_with_indicators["High"],
-                    df_with_indicators["Low"],
-                    maximum=1 / i,
                 ),
                 f"PLUS_DM-{i}": talib.PLUS_DM(
                     df_with_indicators["High"],
@@ -508,6 +502,7 @@ def create_all_indicators_in_talib(
                     df_with_indicators["Volume"],
                     timeperiod=i,
                 ),
+                f"CMF-{i}": CMF(df_with_indicators, timeperiod=i),
                 f"ADOSC-{i}": talib.ADOSC(
                     df_with_indicators["High"],
                     df_with_indicators["Low"],
@@ -519,7 +514,12 @@ def create_all_indicators_in_talib(
                 f"BBANDS-{i}": talib.BBANDS(df_with_indicators["Close"], timeperiod=i)[
                     1
                 ],
-                f"CMF-{i}": CMF(df_with_indicators, timeperiod=i),
+                f"ATR-{i}": talib.ATR(
+                    df_with_indicators["High"],
+                    df_with_indicators["Low"],
+                    df_with_indicators["Close"],
+                    timeperiod=i,
+                ),
             }
         )
     if include_periodless_indicators:
