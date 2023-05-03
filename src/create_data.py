@@ -23,6 +23,7 @@ from sklearn.feature_selection import (
 )
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from ta import add_all_ta_features
+from .configurations import set_random_seed
 
 fred_codes = {
     "FED 2Y Interest Rate": "DGS2",
@@ -89,7 +90,8 @@ def pltcolor(lst: list) -> list:
     return cols
 
 
-def trendNormalizePrices(prices: pd.DataFrame) -> None:
+def trendNormalizePrices(prices: pd.DataFrame, seed: int = 42) -> None:
+    set_random_seed(seed)
     df = prices.copy()
     df["rowNumber"] = list(range(len(df)))
     df["TN_Open"] = list(range(len(df)))
