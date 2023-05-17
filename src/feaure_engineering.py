@@ -66,11 +66,13 @@ def scaling(data, split_index: int, method: str = "MaxAbs", seed=42):
         index=train_data.index,
     )
     train_data["Label"] = train_data["Label"] * 2
+    train_data["Label"] = train_data["Label"].astype("int")
     test_data = pd.DataFrame(
         data=scaled_test,
         columns=test_data.columns,
         index=test_data.index,
     )
     test_data["Label"] = test_data["Label"] * 2
+    test_data["Label"] = test_data["Label"].astype("int")
 
     return pd.concat([train_data, test_data])
