@@ -15,4 +15,4 @@
 
 It is a Jupyter notebook that compares different trading strategies using technical analysis, machine learning, and deep learning methods.
 
-https://www.sciencedirect.com/science/article/pii/S1568494618302151
+You can read the article at: https://drive.google.com/file/d/1s4Az5HqdqpjbkPw00iGHiUh8bYuAJOHp/view?usp=share_link
